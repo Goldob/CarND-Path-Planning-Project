@@ -21,8 +21,7 @@ const int LANE_LEFT = 0;
 const int LANE_CENTER = 1;
 const int LANE_RIGHT = 2;
 
-const double MIN_VELOCITY = 5.0;
-const double MAX_VELOCITY = 20.0;
+const double MAX_VELOCITY = 21.5;
 
 double LANE_OFFSET_MARGIN = 0.25;
 
@@ -115,6 +114,8 @@ int main() {
 		  double closest_distance_in_front[3] = {MAX_DIST, MAX_DIST, MAX_DIST};
 		  double closest_distance_in_back[3] = {MAX_DIST, MAX_DIST, MAX_DIST};
 
+		  double closest_speed_in_front[3];
+
 		  for (int i = 0; i < sensor_fusion.size(); i++) {
 			  double s = sensor_fusion[i][5];
 			  double d = sensor_fusion[i][6];
@@ -142,6 +143,7 @@ int main() {
 
 			  if (s_diff >= 0 && s_diff < closest_distance_in_front[lane]) {
 				  closest_distance_in_front[lane] = s_diff;
+				  closest_speed_in_front[lane] = speed;
 			  } else if (s_diff < 0 & -s_diff < closest_distance_in_back[lane]) {
 				  closest_distance_in_back[lane] = -s_diff;
 			  }
@@ -178,8 +180,8 @@ int main() {
 
 		  // Case 5: There is a vehicle in front of us and we cannot pass it
 		  else {
-			  // Slow down to keep distance to the vehicle in front
-			  target_velocity = MIN_VELOCITY;
+			  // Match speed of the vehicle in front
+			  target_velocity = closest_speed_in_front[target_lane];
 		  }
 
 		  vector<double> anchor_x_vals;
