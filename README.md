@@ -2,8 +2,7 @@
 
 
 
-The following is a solution for [Path Planning Project](https://github.com/udacity/CarND-Path-Planning-Project) from Term 3 of Udacity's Self Driving Car Nanodegree. Refer to the main repository for compilation and testing instructions.
-Self-Driving Car Engineer Nanodegree Program.
+The following is a solution for [Path Planning Project](https://github.com/udacity/CarND-Path-Planning-Project) from Term 3 of Udacity's Self Driving Car Nanodegree Program. Refer to the main repository for compilation and testing instructions.
 
 ![](images/passing.png)
 
