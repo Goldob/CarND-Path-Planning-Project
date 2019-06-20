@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cmath>
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 #include "helpers.h"
@@ -13,6 +14,17 @@
 using nlohmann::json;
 using std::string;
 using std::vector;
+using std::sqrt;
+using std::pow;
+
+const int LANE_LEFT = 0;
+const int LANE_CENTER = 1;
+const int LANE_RIGHT = 2;
+
+const double MIN_VELOCITY = 5.0;
+const double MAX_VELOCITY = 20.0;
+
+double LANE_OFFSET_MARGIN = 0.25;
 
 int main() {
   uWS::Hub h;
@@ -92,8 +104,83 @@ int main() {
 
 		  const double timestep = 0.02;
 
-		  int target_lane = 1;
-		  double target_velocity = 20.0;
+		  static int target_lane = LANE_CENTER;
+		  double target_velocity = MAX_VELOCITY;
+
+		  double target_lane_d = 2 + 4 * target_lane;
+
+		  // Process sensor fusion data
+
+		  double MAX_DIST = 1000;
+		  double closest_distance_in_front[3] = {MAX_DIST, MAX_DIST, MAX_DIST};
+		  double closest_distance_in_back[3] = {MAX_DIST, MAX_DIST, MAX_DIST};
+
+		  for (int i = 0; i < sensor_fusion.size(); i++) {
+			  double s = sensor_fusion[i][5];
+			  double d = sensor_fusion[i][6];
+
+			  // Discard vehicles driving on the other side of the freeway
+			  if (d < 0) continue;
+
+			  double v_x = sensor_fusion[i][3];
+			  double v_y = sensor_fusion[i][4];
+			  double speed = sqrt(pow(v_x, 2) + pow(v_y, 2));
+
+			  // Predict future car position
+			  s += speed * timestep * previous_path_x.size();
+
+			  int lane;
+			  if (d < 4) {
+				  lane = LANE_LEFT;
+			  } else if (d < 8) {
+				  lane = LANE_CENTER;
+			  } else if (d < 12) {
+				  lane = LANE_RIGHT;
+			  }
+
+			  double s_diff = s - end_path_s;
+
+			  if (s_diff >= 0 && s_diff < closest_distance_in_front[lane]) {
+				  closest_distance_in_front[lane] = s_diff;
+			  } else if (s_diff < 0 & -s_diff < closest_distance_in_back[lane]) {
+				  closest_distance_in_back[lane] = -s_diff;
+			  }
+		  }
+
+		  // Make important decisions
+
+		  // Case 1: We are during lane change and haven't reached the target lane yet
+		  if (end_path_d < target_lane_d - LANE_OFFSET_MARGIN || end_path_d > target_lane_d + LANE_OFFSET_MARGIN) {
+			  // Keep changing lane
+		  }
+
+		  // Case 2: It is safe to switch to the right lane
+		  else if (target_lane != LANE_RIGHT && closest_distance_in_back [target_lane + 1] > 20
+			                                 && closest_distance_in_front[target_lane + 1] > 50) {
+			  // Change lane right
+			  target_lane += 1;
+			  target_velocity = MAX_VELOCITY;
+		  }
+
+		  // Case 3: It is safe to stay in our current lane
+		  else if (closest_distance_in_front[target_lane] > 20) {
+			  // Stay on current lane and drive with maximum velocity
+			  target_velocity = MAX_VELOCITY;
+		  }
+
+		  // Case 4: It is safe to switch to the left lane
+		  else if (target_lane != LANE_LEFT && closest_distance_in_back [target_lane - 1] > 20
+			                                && closest_distance_in_front[target_lane - 1] > 30) {
+			  // Change lane left
+			  target_lane -= 1;
+			  target_velocity = MAX_VELOCITY;
+		  }
+
+		  // Case 5: There is a vehicle in front of us and we cannot pass it
+		  else {
+			  // Slow down to keep distance to the vehicle in front
+			  target_velocity = MIN_VELOCITY;
+		  }
 
 		  vector<double> anchor_x_vals;
 		  vector<double> anchor_y_vals;
@@ -130,9 +217,8 @@ int main() {
 		  double anchor_s_inc = 30.0;
 		  for (int i = 1; i <= 3; i++) {
 			  double s = ref_frenet[0] + i * anchor_s_inc;
-			  double d = 2 + 4 * target_lane;
 
-			  auto xy = getXY(s, d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+			  auto xy = getXY(s, target_lane_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
 			  anchor_x_vals.push_back(xy[0]);
 			  anchor_y_vals.push_back(xy[1]);
 		  }
