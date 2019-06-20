@@ -23,6 +23,11 @@ const int LANE_RIGHT = 2;
 
 const double MAX_VELOCITY = 21.5;
 
+const double MIN_KEEP_LANE_DISTANCE_FRONT = 30.0;
+
+const double MIN_LANE_CHANGE_DISTANCE_BACK = 20.0;
+const double MIN_LANE_CHANGE_DISTANCE_FRONT = 40.0;
+
 double LANE_OFFSET_MARGIN = 0.25;
 
 int main() {
@@ -156,23 +161,31 @@ int main() {
 			  // Keep changing lane
 		  }
 
-		  // Case 2: It is safe to switch to the right lane
-		  else if (target_lane != LANE_RIGHT && closest_distance_in_back [target_lane + 1] > 20
-			                                 && closest_distance_in_front[target_lane + 1] > 50) {
+		  // Case 2: Center lane is good to drive
+		  else if (closest_distance_in_back [LANE_CENTER] > MIN_LANE_CHANGE_DISTANCE_BACK
+			    && closest_distance_in_front[LANE_CENTER] > MIN_LANE_CHANGE_DISTANCE_FRONT) {
+			  // Go to center lane - regardless of where we were before
+			  target_lane = LANE_CENTER;
+			  target_velocity = MAX_VELOCITY;
+		  }
+
+		  // Case 3: Our current lane is good to drive
+		  else if (closest_distance_in_front[target_lane] > MIN_KEEP_LANE_DISTANCE_FRONT) {
+			  // Stay on current lane and drive with maximum velocity
+			  target_velocity = MAX_VELOCITY;
+		  }
+
+		  // Case 4: It is safe to switch to the right lane
+		  else if (target_lane != LANE_RIGHT && closest_distance_in_back [target_lane + 1] > MIN_LANE_CHANGE_DISTANCE_BACK
+			                                 && closest_distance_in_front[target_lane + 1] > MIN_LANE_CHANGE_DISTANCE_FRONT) {
 			  // Change lane right
 			  target_lane += 1;
 			  target_velocity = MAX_VELOCITY;
 		  }
 
-		  // Case 3: It is safe to stay in our current lane
-		  else if (closest_distance_in_front[target_lane] > 20) {
-			  // Stay on current lane and drive with maximum velocity
-			  target_velocity = MAX_VELOCITY;
-		  }
-
-		  // Case 4: It is safe to switch to the left lane
-		  else if (target_lane != LANE_LEFT && closest_distance_in_back [target_lane - 1] > 20
-			                                && closest_distance_in_front[target_lane - 1] > 30) {
+		  // Case 5: It is safe to switch to the left lane
+		  else if (target_lane != LANE_LEFT && closest_distance_in_back [target_lane - 1] > MIN_LANE_CHANGE_DISTANCE_BACK
+			                                && closest_distance_in_front[target_lane - 1] > MIN_LANE_CHANGE_DISTANCE_FRONT) {
 			  // Change lane left
 			  target_lane -= 1;
 			  target_velocity = MAX_VELOCITY;
