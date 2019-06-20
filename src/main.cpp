@@ -98,6 +98,8 @@ int main() {
 		  vector<double> anchor_x_vals;
 		  vector<double> anchor_y_vals;
 
+		  static double current_velocity = 0.0;
+
 		  double ref_x, ref_y, ref_x_prev, ref_y_prev, ref_yaw;
 		  int N_prev = previous_path_x.size();
 		  if (N_prev >= 2) {
@@ -161,13 +163,16 @@ int main() {
 		  double target_y = s(target_x);
 		  double target_d = distance(target_x, target_y, 0, 0);
 
-		  double s_inc = target_velocity * timestep;
-		  double N = target_d / s_inc;
+		  double x_coeff = target_x / target_d;
 
 		  // Generate future path points
+		  double x = 0.0;
 		  for (int i = 1; i < 50 - previous_path_x.size(); i++)
 		  {
-			  double x = i * target_x / N;
+			  if (current_velocity < target_velocity) current_velocity += 4.5 * timestep;
+			  if (current_velocity > target_velocity) current_velocity -= 4.5 * timestep;
+
+			  x += current_velocity * timestep * x_coeff;
 			  double y = s(x);
 
 			  // Transform current point back to the global coordinate frame
